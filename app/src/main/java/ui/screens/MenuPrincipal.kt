@@ -13,6 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.example.modoguardian_grupomg.viewmodel.LoginViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,7 +25,10 @@ import androidx.compose.ui.unit.dp
 // Menú principal: un botón por cada guía. Recibe una función para navegar a la ruta elegida
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MenuPrincipal(onNavegar: (String) -> Unit) {
+fun MenuPrincipal(onNavegar: (String) -> Unit, loginViewModel: LoginViewModel) {
+    // El menú original es el inicio autenticado: observa la misma sesión del Login.
+    val loginState by loginViewModel.uiState.collectAsState()
+    val usuario = loginState.usuario ?: return
     // Pares de (ruta, título del botón)
     val guias = listOf(
         "guia9" to "Guía 9 · Diseño adaptable",
@@ -32,7 +39,11 @@ fun MenuPrincipal(onNavegar: (String) -> Unit) {
     )
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("ModoGuardian") }) }
+        topBar = {
+            TopAppBar(title = { Text("ModoGuardian") }, actions = {
+                TextButton(onClick = loginViewModel::logout) { Text("Cerrar sesión") }
+            })
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -43,9 +54,12 @@ fun MenuPrincipal(onNavegar: (String) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Text("${usuario.email} · Rol: ${usuario.rol.etiqueta}",
+                style = MaterialTheme.typography.bodyMedium)
+            loginState.aviso?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Text("Elige una guía", style = MaterialTheme.typography.headlineMedium)
 
-            guias.forEach { (ruta, titulo) ->
+            guias.filter { usuario.rol.puedeAbrirGuia(it.first) }.forEach { (ruta, titulo) ->
                 Button(
                     onClick = { onNavegar(ruta) },
                     modifier = Modifier.fillMaxWidth()
